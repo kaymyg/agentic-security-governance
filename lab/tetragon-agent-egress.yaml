@@ -1,0 +1,27 @@
+# Tetragon TracingPolicy: log outbound TCP connections from agent workloads.
+#
+# STARTING POINT ONLY, UNTESTED in this repo. Field names and selector
+# options change between Tetragon releases, so check the upstream docs
+# (https://tetragon.io/docs/concepts/tracing-policy/) before relying on it.
+#
+# What it does: hooks the kernel function tcp_connect and emits an event for
+# every outbound TCP connection made by processes in pods labelled
+# app.kubernetes.io/component=agent. Pair this with default-deny network
+# policy; this policy observes, it does not block.
+#
+# Apply:  kubectl apply -f lab/tetragon-agent-egress.yaml
+# Watch:  see lab/README.md, "Watch events"
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: agent-egress-connect
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: agent
+  kprobes:
+    - call: "tcp_connect"
+      syscall: false
+      args:
+        - index: 0
+          type: "sock"

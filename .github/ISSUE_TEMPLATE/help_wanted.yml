@@ -1,0 +1,27 @@
+name: Offer help or propose work
+description: Volunteer for a piece of the roadmap or propose a new one
+labels: ["help wanted"]
+body:
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Which layer?
+      options:
+        - "1. Identity & Authority"
+        - "2. Behavioral detection"
+        - "3. Adversarial validation"
+        - "4. Deception & antifragility"
+        - Foundational hygiene
+        - Docs or lab guide
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What do you want to build or change?
+    validations:
+      required: true
+  - type: textarea
+    id: experience
+    attributes:
+      label: Relevant experience (optional)

@@ -1,0 +1,21 @@
+name: Control bypass
+description: You found a way around one of the agentguard controls
+labels: ["bypass", "bug"]
+body:
+  - type: input
+    id: control
+    attributes:
+      label: Which control? (e.g. pep provenance check, circuit breaker, honey-token scan)
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction (a failing pytest is ideal)
+      render: python
+    validations:
+      required: true
+  - type: textarea
+    id: fix
+    attributes:
+      label: Suggested fix (optional)
