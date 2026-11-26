@@ -24,6 +24,7 @@ from .audit import AuditLog
 from .breakers import CircuitBreaker
 from .capability import TokenBroker, TokenError
 from .honeytokens import HoneyTokenRegistry
+from .mcp_allowlist import McpServerAllowlist, McpTool
 from .revocation import RevocationBus
 
 # Only these sources are trusted. Anything else (tool output, retrieved
@@ -41,6 +42,13 @@ class ToolCall:
     egress_bytes: int = 0
     metrics: dict[str, float] = field(default_factory=dict)
     human_approval: str | None = None  # e.g. "human:alice"
+    # MCP provenance: which server hosted this tool, its declared version and
+    # the tool manifest it presented at call time (tools/list). When absent,
+    # the call is not an MCP-mediated call and the MCP allowlist (if one is
+    # configured) does not apply to it.
+    mcp_server: str | None = None
+    mcp_version: str | None = None
+    mcp_tools: "tuple[McpTool, ...] | None" = None
 
 
 @dataclass(frozen=True)
@@ -58,6 +66,8 @@ class PolicyEnforcementPoint:
         honeytokens: HoneyTokenRegistry,
         audit: AuditLog,
         irreversible_tools: set[str] | None = None,
+        mcp_allowlist: "McpServerAllowlist | None" = None,
+        task_type: str = "general",
     ) -> None:
         self.broker = broker
         self.bus = bus
@@ -68,6 +78,11 @@ class PolicyEnforcementPoint:
             irreversible_tools
             or {"send_email", "transfer_funds", "delete_record", "export_report"}
         )
+        # Optional MCP allowlist: when configured, every call that names an MCP
+        # server must present a server approved for `task_type`, at the pinned
+        # version, with an unchanged tool manifest.
+        self.mcp_allowlist = mcp_allowlist
+        self.task_type = task_type
         bus.subscribe(self._on_revocation)
 
     def authorize(self, token: str, call: ToolCall) -> Decision:
@@ -84,6 +99,20 @@ class PolicyEnforcementPoint:
             return self._decide(False, f"tool '{call.tool}' not in capability", call, subject)
         if method not in cap.methods:
             return self._decide(False, f"method {method} not in capability", call, subject)
+
+        # MCP allowlist: refuse servers that are not approved for this task
+        # type, or whose version or tool manifest drifted after approval.
+        # A changed manifest is the description-injection case: the tool name
+        # is unchanged, so only the pinned hash catches it.
+        if self.mcp_allowlist is not None and call.mcp_server is not None:
+            ok, reason = self.mcp_allowlist.check(
+                self.task_type,
+                call.mcp_server,
+                call.mcp_version or "",
+                call.mcp_tools or (),
+            )
+            if not ok:
+                return self._decide(False, reason, call, subject)
 
         side_effect = method in SIDE_EFFECT_METHODS or call.tool in self.irreversible
         if side_effect and call.instruction_source not in TRUSTED_SOURCES:
