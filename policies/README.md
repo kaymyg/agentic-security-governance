@@ -8,6 +8,7 @@
 2. **Provenance rule against indirect prompt injection.** If the instruction to call a tool came from untrusted content (`tool_output` or `retrieved_document`), any side effect is denied. Side effects are the tools `send_reply`, `export_report`, `delete_record`, `transfer_funds`, or any `POST`, `PUT`, `PATCH` or `DELETE`. Reads from untrusted context are still allowed.
 3. **Human approval for irreversible actions.** High-risk agents need at least one approval starting with `human:` before calling an irreversible tool. Approvals from other agents (for example `agent:reviewer-bot`) do not count.
 4. **Egress caps by risk tier.** Low 1,000,000 bytes, medium 100,000, high 10,000. Unknown tiers are denied.
+5. **MCP server allowlist (issue #10).** When the call names an MCP server (`mcp_server` set), the server must be approved for the task type in `mcp_server_allowlist`, at the pinned version, with an unchanged tool-manifest hash. A server that keeps its tool names but edits a description to inject instructions presents the same tools and a different hash — the hash pin refuses it. Calls without MCP provenance are governed by the rules above unchanged. See docs/mcp-server-allowlist.md for how to approve a server and re-approve a new version.
 
 The policy is deny by default. `deny` collects human-readable reasons, `allow` is true only when `deny` is empty and the tool is permitted, and `decision` returns both.
 
@@ -18,7 +19,11 @@ The policy is deny by default. `deny` collects human-readable reasons, `allow` i
   "agent":     {"subject": "spiffe://lab/agent/x", "risk_tier": "low|medium|high"},
   "task":      {"type": "summarize|support_reply|finance_report"},
   "call":      {"tool": "send_reply", "method": "POST", "egress_bytes": 2048,
-                "instruction_source": "user|system|tool_output|retrieved_document"},
+                "instruction_source": "user|system|tool_output|retrieved_document",
+                "mcp_server": "docs-server",           // optional — MCP provenance
+                "mcp_version": "1.2.0",                // optional — required for MCP calls
+                "mcp_manifest_sha256": "c80acc22…"     // optional — hash of tools/list at call time
+  },
   "approvals": ["human:alice"]
 }
 ```
