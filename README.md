@@ -116,3 +116,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). This is a defensive project, so please n
 ## License
 
 [Apache-2.0](LICENSE)
+
+## Contributing
+
+Looking for something to work on? See [HELP_WANTED.md](HELP_WANTED.md), and [CONTRIBUTING.md](CONTRIBUTING.md) for setup.
